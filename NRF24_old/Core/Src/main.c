@@ -22,11 +22,6 @@
 #include "stm32l4xx_hal.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <string.h>
-
-#include "uart.h"
-#include "nrf24.h"
-#include "TJ_MPU6050.h"
 #include "MY_NRF24.h"
 /* USER CODE END Includes */
 
@@ -45,8 +40,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c2;
-
 SPI_HandleTypeDef hspi1;
 
 UART_HandleTypeDef huart3;
@@ -60,53 +53,15 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART3_UART_Init(void);
-static void MX_I2C2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t TxpipeAddrs[5] = {0x2f,0xa6,0x37,0x89,0x73};
+uint8_t TxpipeAddrs[6] = {0x2f,0xa6,0x37,0x89,0x73};
 char myTxData[32] = "Hello World!";
 char AckPayload[32];
-
-RawData_Def myAccelRaw, myGyroRaw;
-ScaledData_Def myAccelScaled, myGyroScaled;
-
-void avgMPU6050_2000()
-{
-	RawData_Def avgAccelRaw, avgGyroRaw;
-
-	long accel_x = 0;
-	long accel_y = 0;
-	long accel_z = 0;
-	long gyro_x = 0;
-	long gyro_y = 0;
-	long gyro_z = 0;
-	for (int i = 0; i < 2000; i++) {
-		MPU6050_Get_Accel_RawData(&avgAccelRaw);
-		MPU6050_Get_Gyro_RawData(&avgGyroRaw);
-		accel_x += avgAccelRaw.x;
-		accel_y += avgAccelRaw.y;
-		accel_z += avgAccelRaw.z;
-		gyro_x += avgGyroRaw.x;
-		gyro_y += avgGyroRaw.y;
-		gyro_z += avgGyroRaw.z;
-
-		HAL_Delay(20);
-	}
-
-	USART_printf(&huart3, "Accel:\r\n");
-	USART_printf(&huart3, "\tx: %ld:\r\n", (accel_x / 2000)-140);
-	USART_printf(&huart3, "\ty: %ld:\r\n", (accel_y / 2000)-137);
-	USART_printf(&huart3, "\tz: %ld:\r\n", (accel_z / 2000)+38);
-	USART_printf(&huart3, "Gyro:\r\n");
-	USART_printf(&huart3, "\tx: %ld:\r\n", (gyro_x / 2000)+56);
-	USART_printf(&huart3, "\ty: %ld:\r\n", (gyro_y / 2000)-30);
-	USART_printf(&huart3, "\tz: %ld:\r\n", (gyro_z / 2000)+44);
-}
-
 /* USER CODE END 0 */
 
 /**
@@ -116,7 +71,7 @@ void avgMPU6050_2000()
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	MPU_ConfigTypeDef myMpuConfig;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -139,41 +94,27 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_USART3_UART_Init();
-  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
-   nrf24_DebugUART_Init(huart3);
-   NRF24_begin(GPIOB, CSNpin_Pin, GPIO_PIN_9, hspi1);
-   NRF24_powerUp();
+  nrf24_DebugUART_Init(huart3);
+  NRF24_begin(GPIOB, CSNpin_Pin, GPIO_PIN_9, hspi1);
+  NRF24_powerUp();
 
-   // printRadioSettings();
+  // printRadioSettings();
 
-   //**** TRANSMIT - ACK ****//
-   NRF24_stopListening();
-   NRF24_openWritingPipe(TxpipeAddrs);
-   NRF24_setAutoAck(true);
-   NRF24_setChannel(82);
-   NRF24_setPayloadSize(32);
-   NRF24_setPALevel(RF24_PA_0dB);
-   NRF24_setDataRate(RF24_2MBPS);
-   NRF24_setRetries(0x3, 3);
-   NRF24_setCRCLength(RF24_CRC_8);
+  //**** TRANSMIT - ACK ****//
+  NRF24_stopListening();
+  NRF24_openWritingPipe(TxpipeAddrs);
+  NRF24_setAutoAck(true);
+  NRF24_setChannel(82);
+  NRF24_setPayloadSize(32);
+  NRF24_setPALevel(RF24_PA_0dB);
+  NRF24_setDataRate(RF24_2MBPS);
+  NRF24_setRetries(0x3, 3);
+  NRF24_setCRCLength(RF24_CRC_8);
 
-   NRF24_enableDynamicPayloads();
-  // NRF24_enableAckPayload();
-   printRadioSettings();
-  //  nRF24_DumpConfig();
-
-    //1. Initialise the MPU6050 module and I2C
-    	MPU6050_Init(&hi2c2);
-    	//2. Configure Accel and Gyro parameters
-    	myMpuConfig.Accel_Full_Scale = AFS_SEL_4g;
-    	myMpuConfig.ClockSource = Internal_8MHz;
-    	myMpuConfig.CONFIG_DLPF = DLPF_184A_188G_Hz;
-    	myMpuConfig.Gyro_Full_Scale = FS_SEL_500;
-    	myMpuConfig.Sleep_Mode_Bit = 0;  //1: sleep mode, 0: normal mode
-    	MPU6050_Config(&myMpuConfig);
-
-    	//avgMPU6050_2000();
+  NRF24_enableDynamicPayloads();
+ // NRF24_enableAckPayload();
+  printRadioSettings();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -183,29 +124,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  		//Raw data
-	  		//MPU6050_Get_Accel_RawData(&myAccelRaw);
-	  		//mpu6050_avg(&myAccelRaw);
-	  		//MPU6050_Get_Gyro_RawData(&myGyroRaw);
-	  		//mpu6050_avg(&myGyroRaw);
-
-	  		//Scaled data
-	  		//MPU6050_Get_Accel_Scale(&myAccelScaled);
-	  		//MPU6050_Get_Gyro_Scale(&myGyroScaled);
-	  		//mpu6050_avg(&myGyroRaw);
-
 	  if(NRF24_write(myTxData, 32))
-	  		{
-	  			//NRF24_read(AckPayload, 32);
-	  			HAL_UART_Transmit(&huart3, (uint8_t *)"Transmitted Successfully\r\n", strlen("Transmitted Successfully\r\n"), 10);
+		{
+			//NRF24_read(AckPayload, 32);
+			HAL_UART_Transmit(&huart3, (uint8_t *)"Transmitted Successfully\r\n", strlen("Transmitted Successfully\r\n"), 10);
 
-	  		//	char myDataack[80];
-	  			//sprintf(myDataack, "AckPayload:  %s \r\n", AckPayload);
-	  		//	HAL_UART_Transmit(&huart3, (uint8_t *)myDataack, strlen(myDataack), 10);
-	  		}
+		//	char myDataack[80];
+			//sprintf(myDataack, "AckPayload:  %s \r\n", AckPayload);
+		//	HAL_UART_Transmit(&huart3, (uint8_t *)myDataack, strlen(myDataack), 10);
+		}
 
 		HAL_Delay(1000);
-		//avgMPU6050_2000();
   }
   /* USER CODE END 3 */
 }
@@ -250,9 +179,8 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART3|RCC_PERIPHCLK_I2C2;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART3;
   PeriphClkInit.Usart3ClockSelection = RCC_USART3CLKSOURCE_PCLK1;
-  PeriphClkInit.I2c2ClockSelection = RCC_I2C2CLKSOURCE_PCLK1;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -263,52 +191,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief I2C2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C2_Init(void)
-{
-
-  /* USER CODE BEGIN I2C2_Init 0 */
-
-  /* USER CODE END I2C2_Init 0 */
-
-  /* USER CODE BEGIN I2C2_Init 1 */
-
-  /* USER CODE END I2C2_Init 1 */
-  hi2c2.Instance = I2C2;
-  hi2c2.Init.Timing = 0x00909BEB;
-  hi2c2.Init.OwnAddress1 = 0;
-  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c2.Init.OwnAddress2 = 0;
-  hi2c2.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Analogue filter
-  */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Digital filter
-  */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C2_Init 2 */
-
-  /* USER CODE END I2C2_Init 2 */
-
 }
 
 /**
@@ -334,7 +216,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -396,11 +278,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, CSNpin_Pin|CEpin_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : CSNpin_Pin CEpin_Pin */
   GPIO_InitStruct.Pin = CSNpin_Pin|CEpin_Pin;

@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+
+#include "uart.h"
 #include "nrf24.h"
 #include "TJ_MPU6050.h"
 /* USER CODE END Includes */
@@ -70,6 +72,40 @@ char AckPayload[32];
 
 RawData_Def myAccelRaw, myGyroRaw;
 ScaledData_Def myAccelScaled, myGyroScaled;
+
+void avgMPU6050_2000()
+{
+	RawData_Def avgAccelRaw, avgGyroRaw;
+
+	long accel_x = 0;
+	long accel_y = 0;
+	long accel_z = 0;
+	long gyro_x = 0;
+	long gyro_y = 0;
+	long gyro_z = 0;
+	for (int i = 0; i < 2000; i++) {
+		MPU6050_Get_Accel_RawData(&avgAccelRaw);
+		MPU6050_Get_Gyro_RawData(&avgGyroRaw);
+		accel_x += avgAccelRaw.x;
+		accel_y += avgAccelRaw.y;
+		accel_z += avgAccelRaw.z;
+		gyro_x += avgGyroRaw.x;
+		gyro_y += avgGyroRaw.y;
+		gyro_z += avgGyroRaw.z;
+
+		HAL_Delay(20);
+	}
+
+	USART_printf(&huart3, "Accel:\r\n");
+	USART_printf(&huart3, "\tx: %ld:\r\n", (accel_x / 2000)-140);
+	USART_printf(&huart3, "\ty: %ld:\r\n", (accel_y / 2000)-137);
+	USART_printf(&huart3, "\tz: %ld:\r\n", (accel_z / 2000)+38);
+	USART_printf(&huart3, "Gyro:\r\n");
+	USART_printf(&huart3, "\tx: %ld:\r\n", (gyro_x / 2000)+56);
+	USART_printf(&huart3, "\ty: %ld:\r\n", (gyro_y / 2000)-30);
+	USART_printf(&huart3, "\tz: %ld:\r\n", (gyro_z / 2000)+44);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -120,7 +156,7 @@ int main(void)
     nRF24_SetOperationalMode(nRF24_MODE_TX); // switch transceiver to the TX mode
     nRF24_SetPowerMode(nRF24_PWR_UP); // wake-up transceiver (in case if it sleeping)
 
-    nRF24_DumpConfig();
+  //  nRF24_DumpConfig();
 
     //1. Initialise the MPU6050 module and I2C
     	MPU6050_Init(&hi2c2);
@@ -131,6 +167,8 @@ int main(void)
     	myMpuConfig.Gyro_Full_Scale = FS_SEL_500;
     	myMpuConfig.Sleep_Mode_Bit = 0;  //1: sleep mode, 0: normal mode
     	MPU6050_Config(&myMpuConfig);
+
+    	//avgMPU6050_2000();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -141,20 +179,23 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  		//Raw data
-	  		MPU6050_Get_Accel_RawData(&myAccelRaw);
-	  		MPU6050_Get_Gyro_RawData(&myGyroRaw);
+	  		//MPU6050_Get_Accel_RawData(&myAccelRaw);
+	  		//mpu6050_avg(&myAccelRaw);
+	  		//MPU6050_Get_Gyro_RawData(&myGyroRaw);
+	  		//mpu6050_avg(&myGyroRaw);
 
 	  		//Scaled data
-	  		MPU6050_Get_Accel_Scale(&myAccelScaled);
-	  		MPU6050_Get_Gyro_Scale(&myGyroScaled);
+	  		//MPU6050_Get_Accel_Scale(&myAccelScaled);
+	  		//MPU6050_Get_Gyro_Scale(&myGyroScaled);
+	  		//mpu6050_avg(&myGyroRaw);
 /*
 	  if(nRF24_TransmitPacket((uint8_t *)myTxData, 32) == nRF24_TX_SUCCESS)
 		{
 			HAL_UART_Transmit(&huart3, (uint8_t *)"Transmitted Successfully\r\n", strlen("Transmitted Successfully\r\n"), 10);
 		}
 */
-		HAL_Delay(1000);
-
+	//	HAL_Delay(1000);
+		avgMPU6050_2000();
   }
   /* USER CODE END 3 */
 }

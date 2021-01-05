@@ -23,6 +23,12 @@ References:
 #include <stdbool.h>	//Boolean
 #include <math.h>			//Pow()
 
+#define GYRO_X_CALIB	56
+#define GYRO_Y_CALIB	-30
+#define GYRO_Z_CALIB	44
+#define ACCEL_X_CALIB	-140
+#define ACCEL_Y_CALIB	-137
+#define ACCEL_Z_CALIB	38
 //Define Registers
 #define WHO_AM_I_REG			0x75
 #define MPU_ADDR					0x68
@@ -150,3 +156,4 @@ void MPU6050_Get_Gyro_RawData(RawData_Def *rawDef);
 void MPU6050_Get_Gyro_Scale(ScaledData_Def *scaledDef);
 //14- Accel Calibration
 void _Accel_Cali(float x_min, float x_max, float y_min, float y_max, float z_min, float z_max);
+

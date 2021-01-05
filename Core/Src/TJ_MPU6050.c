@@ -19,7 +19,6 @@ References:
 
 //Header files
 #include "TJ_MPU6050.h"
-
 //Library Variable
 //1- I2C Handle 
 static I2C_HandleTypeDef i2cHandler;
@@ -220,19 +219,17 @@ void MPU6050_Get_Accel_Cali(ScaledData_Def *CaliDef)
 	MPU6050_Get_Accel_Scale(&AccelScaled);
 	
 	//Accel Scale data 
-	CaliDef->x = (AccelScaled.x) - A_X_Bias; // x-Axis
-	CaliDef->y = (AccelScaled.y) - A_Y_Bias;// y-Axis
-	CaliDef->z = (AccelScaled.z) - A_Z_Bias;// z-Axis
+	CaliDef->x = (AccelScaled.x+ACCEL_X_CALIB) - A_X_Bias; // x-Axis
+	CaliDef->y = (AccelScaled.y+ACCEL_Y_CALIB) - A_Y_Bias;// y-Axis
+	CaliDef->z = (AccelScaled.z+ACCEL_Z_CALIB) - A_Z_Bias;// z-Axis
 }
 //12- Get Gyro Raw Data
 void MPU6050_Get_Gyro_RawData(RawData_Def *rawDef)
 {
-	
 	//Accel Raw Data
 	rawDef->x = GyroRW[0];
 	rawDef->y = GyroRW[1];
 	rawDef->z = GyroRW[2];
-	
 }
 
 //13- Get Gyro scaled data
@@ -242,9 +239,9 @@ void MPU6050_Get_Gyro_Scale(ScaledData_Def *scaledDef)
 	MPU6050_Get_Gyro_RawData(&myGyroRaw);
 	
 	//Gyro Scale data 
-	scaledDef->x = (myGyroRaw.x)*gyroScalingFactor; // x-Axis
-	scaledDef->y = (myGyroRaw.y)*gyroScalingFactor; // y-Axis
-	scaledDef->z = (myGyroRaw.z)*gyroScalingFactor; // z-Axis
+	scaledDef->x = (myGyroRaw.x + GYRO_X_CALIB)*gyroScalingFactor; // x-Axis
+	scaledDef->y = (myGyroRaw.y + GYRO_Y_CALIB)*gyroScalingFactor; // y-Axis
+	scaledDef->z = (myGyroRaw.z + GYRO_Z_CALIB)*gyroScalingFactor; // z-Axis
 }
 
 //14- Accel Calibration

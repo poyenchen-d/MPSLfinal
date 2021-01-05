@@ -2,6 +2,7 @@
 
 
 #include "nrf24.h"
+#include "uart.h"
 
 UART_HandleTypeDef *nRF24_debug_UART = NULL;
 
@@ -561,24 +562,6 @@ nRF24_TXResult nRF24_TransmitPacket(uint8_t *pBuf, uint8_t length) {
 	nRF24_FlushTX();
 
 	return nRF24_TX_ERROR;
-}
-
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
-
-void USART_printf(UART_HandleTypeDef *usart, const char *fmt, ...)
-{
-	va_list ap;
-	char buf[1024];
-
-	va_start(ap, fmt);
-
-	vsnprintf(buf, sizeof(buf), fmt, ap);
-
-	HAL_UART_Transmit(usart, (uint8_t *)buf, (uint16_t)strlen(buf), 100);
-
-	va_end(ap);
 }
 
 #define __printf(fmt, ...) USART_printf(nRF24_debug_UART, fmt, ##__VA_ARGS__)

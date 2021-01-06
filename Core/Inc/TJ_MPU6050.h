@@ -29,6 +29,7 @@ References:
 #define ACCEL_X_CALIB	-140
 #define ACCEL_Y_CALIB	-137
 #define ACCEL_Z_CALIB	38
+
 //Define Registers
 #define WHO_AM_I_REG			0x75
 #define MPU_ADDR					0x68

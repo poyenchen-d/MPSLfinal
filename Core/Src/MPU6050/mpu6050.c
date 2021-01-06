@@ -6,11 +6,32 @@
  */
 #include <math.h>
 #include <stdint.h>
+#include "stm32l4xx_hal.h"
 #include "MPU6050/mpu6050.h"
 #include "MPU6050/inv_mpu.h"
 #include "MPU6050/inv_mpu_dmp_motion_driver.h"
 
+static float accelScalingFactor, gyroScalingFactor;
 static signed char gyro_orientation[9] = { -1, 0, 0, 0, -1, 0, 0, 0, 1 };
+float exInt=0;
+float eyInt=0;
+float ezInt=0;
+
+HAL_StatusTypeDef IICwriteBits(uint8_t slave_addr, uint8_t reg_addr,
+    uint8_t bitStart, uint8_t length, uint8_t data) {
+
+  uint8_t tmp, dataShift;
+  HAL_StatusTypeDef status = i2c_read(slave_addr, reg_addr, 1, &tmp);
+  if (status == HAL_OK) {
+    uint8_t mask = (((1 << length) - 1) << (bitStart - length + 1));
+    dataShift = data << (bitStart - length + 1);
+    tmp &= mask;
+    tmp |= dataShift;
+    return i2c_write(slave_addr, reg_addr, 1, &tmp);
+  } else {
+    return status;
+  }
+}
 
 static unsigned short inv_row_2_scale(const signed char *row) {
 	unsigned short b;
@@ -46,7 +67,7 @@ static void run_self_test(void) {
 	long gyro[3], accel[3];
 
 	result = mpu_run_self_test(gyro, accel);
-	if (result == 0x7) {
+	//if (result == 0x7) {
 		/* Test passed. We can trust the gyro data here, so let's push it down
 		 * to the DMP.
 		 */
@@ -63,32 +84,66 @@ static void run_self_test(void) {
 		accel[2] *= accel_sens;
 		dmp_set_accel_bias(accel);
 		//log_i("setting bias succesfully ......\r\n");
-	}
+	//}
 }
 
-void MPU6050_Init()
+void MPU6050_setClockSource(uint8_t source) {
+	IICwriteBits(0x68, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_CLKSEL_BIT, MPU6050_PWR1_CLKSEL_LENGTH, source);
+}
+
+int MPU6050_Init()
 {
-	mpu_init();
-    mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-    mpu_set_gyro_fsr(500);
-    mpu_set_accel_fsr(4);
-    mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-    mpu_set_sample_rate(DEFAULT_MPU_HZ);
-    if (dmp_load_motion_driver_firmware()) {
-    	return;
+	if (mpu_init()) {
+		return -1;
+	}
+    if (mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL)) {
+    	return -1;
     }
-    dmp_set_orientation(inv_orientation_matrix_to_scalar(gyro_orientation));
-    dmp_enable_feature(
+    MPU6050_setClockSource(MPU6050_CLOCK_PLL_XGYRO);
+
+    if (mpu_set_gyro_fsr(250)) {
+    	return -1;
+    }
+    gyroScalingFactor = (250.0f/32768.0f);
+    if (mpu_set_accel_fsr(8)) {
+    	return -1;
+    }
+    accelScalingFactor = (8000.0f/32768.0f);
+    if (mpu_set_lpf(188)) {
+    	return -1;
+    }
+    if (mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL)) {
+    	return -1;
+    }
+    if (mpu_set_sample_rate(DEFAULT_MPU_HZ)) {
+    	return -1;
+    }
+    if (dmp_load_motion_driver_firmware()) {
+    	return -1;
+    }
+    if (dmp_set_orientation(inv_orientation_matrix_to_scalar(gyro_orientation))) {
+    	return -1;
+    }
+    if (dmp_enable_feature(
  	    DMP_FEATURE_6X_LP_QUAT |
 	    DMP_FEATURE_TAP |
 	    DMP_FEATURE_ANDROID_ORIENT |
 	    DMP_FEATURE_SEND_RAW_ACCEL |
 	    DMP_FEATURE_SEND_CAL_GYRO |
 	    DMP_FEATURE_GYRO_CAL
-    );
-    dmp_set_fifo_rate(DEFAULT_MPU_HZ);
+    )) {
+    	return -1;
+    }
+    if (dmp_set_fifo_rate(DEFAULT_MPU_HZ)) {
+    	return -1;
+    }
     run_self_test();
+    if (mpu_set_dmp_state(1)) {
+    	return -1;
+    }
     mpu_reg_dump();
+
+    return 0;
 }
 
 uint8_t MPU6050_isConnected(void) {
@@ -117,6 +172,88 @@ int MPU6050_GetQuaternion(struct Quaternion *q)
 	    q->z = quat[3] / q30;
 	}
 	return 0;
+}
+
+void MPU6050_ToAccelScaled(struct ScaledData *scaled, const int16_t raw[3])
+{
+	scaled->x = ((raw[0] + ACCEL_X_CALIB) * accelScalingFactor);
+	scaled->y = ((raw[1] + ACCEL_Y_CALIB) * accelScalingFactor);
+	scaled->z = ((raw[2] + ACCEL_Z_CALIB) * accelScalingFactor);
+}
+
+void MPU6050_ToGyroScaled(struct ScaledData *scaled, const int16_t raw[3])
+{
+	scaled->x = ((raw[0] + GYRO_X_CALIB) * gyroScalingFactor);
+	scaled->y = ((raw[1] + GYRO_Y_CALIB) * gyroScalingFactor);
+	scaled->z = ((raw[2] + GYRO_Z_CALIB) * gyroScalingFactor);
+}
+
+void MPU6050_ToQuaternion(struct Quaternion *q, const struct ScaledData *accel, const struct ScaledData *gyro, float sec)
+{
+	  float ax= accel->x;
+	  float ay= accel->y;
+	  float az= accel->z;
+	  float gx= gyro->x;
+	  float gy= gyro->y;
+	  float gz= gyro->z;
+	  gx =gx/180*3.14;
+	  gy =gy/180*3.14;
+	  gz =gz/180*3.14;
+	  float q0= q->x;
+	  float q1= q->y;
+	  float q2= q->z;
+	  float q3= q->w;
+	  float halfT = sec / 2.0;
+	  float Kp =2.0;
+	  float Ki =0.2;
+	  float norm;
+	  float vx, vy, vz;
+	  float ex, ey, ez;
+
+
+	  // normalise the measurements
+	  norm = sqrt(ax * ax + ay * ay + az * az);
+	  ax = ax / norm;
+	  ay = ay / norm;
+	  az = az / norm;
+
+	  // estimated direction of gravity
+	  vx = 2.0 * ((q1 * q3) - (q0 * q2));
+	  vy = 2.0 * (q0 * q1 + q2 * q3);
+	  vz = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+
+	  // error is sum of cross product between reference direction of field and direction measured by sensor
+	  ex = (ay * vz - az * vy);
+	  ey = (az * vx - ax * vz);
+	  ez = (ax * vy - ay * vx);
+
+	  // integral error scaled integral gain
+	  exInt = exInt + ex * Ki;
+	  eyInt = eyInt + ey * Ki;
+	  ezInt = ezInt + ez * Ki;
+
+	  // adjusted gyroscope measurements
+	  gx = gx + Kp * ex + exInt;
+	  gy = gy + Kp * ey + eyInt;
+	  gz = gz + Kp * ez + ezInt;
+
+	  // integrate quaternion rate and normalise
+	  q0 = q0 + (-q1 * gx - q2 * gy - q3 * gz) * halfT;
+	  q1 = q1 + (q0 * gx + q2 * gz - q3 * gy) * halfT;
+	  q2 = q2 + (q0 * gy - q1 * gz + q3 * gx) * halfT;
+	  q3 = q3 + (q0 * gz + q1 * gy - q2 * gx) * halfT;
+
+	  // normalise quaternion
+	  norm = sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
+	  q0 = q0 / norm;
+	  q1 = q1 / norm;
+	  q2 = q2 / norm;
+	  q3 = q3 / norm;
+
+	  q->x = q0;
+	  q->y = q1;
+	  q->z = q2;
+	  q->w = q3;
 }
 
 void MPU6050_ToEuler(struct Euler *p, const struct Quaternion *q)

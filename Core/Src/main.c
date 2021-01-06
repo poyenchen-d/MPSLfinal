@@ -193,8 +193,19 @@ int main(void)
     	//avgMPU6050_2000();
     	 * */
    mpu6050_i2c = &hi2c2;
-   MPU6050_Init();
+   if (MPU6050_Init()) {
+	   USART_printf(&huart3, "Failed to initialize MPU6050.\r\n");
+   }
 
+   uint32_t gyro_ts = HAL_GetTick();
+   uint32_t last_print = gyro_ts;
+   struct Quaternion q;
+   q.w = 1;
+   q.x = 0;
+   q.y = 0;
+   q.z = 0;
+
+   USART_printf(&huart3, "Connected: %u\r\n", MPU6050_isConnected());
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -214,7 +225,7 @@ int main(void)
 	  		//MPU6050_Get_Accel_Scale(&myAccelScaled);
 	  		//MPU6050_Get_Gyro_Scale(&myGyroScaled);
 	  		//mpu6050_avg(&myGyroRaw);
-
+/*
 	  if(NRF24_write(myTxData, 32))
 	  		{
 	  			//NRF24_read(AckPayload, 32);
@@ -224,41 +235,60 @@ int main(void)
 	  			//sprintf(myDataack, "AckPayload:  %s \r\n", AckPayload);
 	  		//	HAL_UART_Transmit(&huart3, (uint8_t *)myDataack, strlen(myDataack), 10);
 	  		}
+	  		*/
 		struct Euler p;
-		struct Quaternion q;
+
 		struct Gravity g;
+		struct YPR y;
 
-		USART_printf(&huart3, "Connected: %u\r\n", MPU6050_isConnected());
-		uint16_t data[3];
 
-		mpu_get_gyro_reg (data, NULL);
-		USART_printf(&huart3, "test:\r\n");
-		USART_printf(&huart3, "\tx: %u:\r\n", data[0]);
-		USART_printf(&huart3, "\ty: %u:\r\n", data[1]);
-		USART_printf(&huart3, "\tz: %u:\r\n", data[2]);
-		mpu_get_accel_reg(data, NULL);
-		USART_printf(&huart3, "test2:\r\n");
-		USART_printf(&huart3, "\tx: %u:\r\n", data[0]);
-		USART_printf(&huart3, "\ty: %u:\r\n", data[1]);
-		USART_printf(&huart3, "\tz: %u:\r\n", data[2]);
 
-		MPU6050_GetQuaternion(&q);
-		USART_printf(&huart3, "Quaternion:\r\n");
-		USART_printf(&huart3, "\tx: %f:\r\n", q.x);
-		USART_printf(&huart3, "\ty: %f:\r\n", q.y);
-		USART_printf(&huart3, "\tz: %f:\r\n", q.z);
-		MPU6050_ToGravity(&g, &q);
-		MPU6050_ToYPR(&p, &q, &g);
+
+		int16_t gyro_raw[3], accel_raw[3];
+
+		mpu_get_gyro_reg (gyro_raw, NULL);
+		mpu_get_accel_reg(accel_raw, NULL);
+
+		struct ScaledData accel, gyro;
+
+		MPU6050_ToAccelScaled(&accel, accel_raw);
+		MPU6050_ToGyroScaled(&gyro, gyro_raw);
+
+		uint32_t ts = HAL_GetTick();
+		MPU6050_ToQuaternion(&q, &accel, &gyro, (ts - gyro_ts) / 1000.0);
+		gyro_ts = ts;
+
 		MPU6050_ToEuler(&p,  &q);
+		MPU6050_ToGravity(&g, &q);
+		MPU6050_ToYPR(&y, &q, &g);
 
-		USART_printf(&huart3, "Euler:\r\n");
-		USART_printf(&huart3, "\tx: %f:\r\n", p.x);
-		USART_printf(&huart3, "\ty: %f:\r\n", p.y);
-		USART_printf(&huart3, "\tz: %f:\r\n", p.z);
+		uint32_t print_ts = HAL_GetTick();
+		if (print_ts - last_print > 1000) {
+			USART_printf(&huart3, "test:\r\n");
+			USART_printf(&huart3, "\tx: %d:\r\n", gyro_raw[0]);
+			USART_printf(&huart3, "\ty: %d:\r\n", gyro_raw[1]);
+			USART_printf(&huart3, "\tz: %d:\r\n", gyro_raw[2]);
+			USART_printf(&huart3, "test2:\r\n");
+			USART_printf(&huart3, "\tx: %d:\r\n", accel_raw[0]);
+			USART_printf(&huart3, "\ty: %d:\r\n", accel_raw[1]);
+			USART_printf(&huart3, "\tz: %d:\r\n", accel_raw[2]);
+			USART_printf(&huart3, "Quaternion:\r\n");
+			USART_printf(&huart3, "\tw: %f:\r\n", q.w);
+			USART_printf(&huart3, "\tx: %f:\r\n", q.x);
+			USART_printf(&huart3, "\ty: %f:\r\n", q.y);
+			USART_printf(&huart3, "\tz: %f:\r\n", q.z);
+			USART_printf(&huart3, "Euler:\r\n");
+			USART_printf(&huart3, "\tx: %f:\r\n", p.x);
+			USART_printf(&huart3, "\ty: %f:\r\n", p.y);
+			USART_printf(&huart3, "\tz: %f:\r\n", p.z);
+			USART_printf(&huart3, "YPR:\r\n");
+			USART_printf(&huart3, "\tyaw: %f:\r\n", y.yaw);
+			USART_printf(&huart3, "\tpitch: %f:\r\n", y.pitch);
+			USART_printf(&huart3, "\troll: %f:\r\n", y.roll);
 
+			last_print = print_ts;
+		}
 
-
-		HAL_Delay(1000);
 		//avgMPU6050_2000();
   }
   /* USER CODE END 3 */

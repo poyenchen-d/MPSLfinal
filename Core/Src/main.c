@@ -24,10 +24,12 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 
+#include "i2c.h"
 #include "uart.h"
 #include "nrf24.h"
-#include "TJ_MPU6050.h"
+
 #include "MY_NRF24.h"
+#include "MPU6050/mpu6050.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,9 +73,9 @@ uint8_t TxpipeAddrs[5] = {0x2f,0xa6,0x37,0x89,0x73};
 char myTxData[32] = "Hello World!";
 char AckPayload[32];
 
-RawData_Def myAccelRaw, myGyroRaw;
-ScaledData_Def myAccelScaled, myGyroScaled;
-
+//RawData_Def myAccelRaw, myGyroRaw;
+//ScaledData_Def myAccelScaled, myGyroScaled;
+/*
 void avgMPU6050_2000()
 {
 	RawData_Def avgAccelRaw, avgGyroRaw;
@@ -105,8 +107,21 @@ void avgMPU6050_2000()
 	USART_printf(&huart3, "\tx: %ld:\r\n", (gyro_x / 2000)+56);
 	USART_printf(&huart3, "\ty: %ld:\r\n", (gyro_y / 2000)-30);
 	USART_printf(&huart3, "\tz: %ld:\r\n", (gyro_z / 2000)+44);
+	struct Euler p;
+	struct Quaternion q;
+
+	float Euler_x = 0;
+	float Euler_y = 0;
+	float Euler_z = 0;
+	MPU6050_ToEuler(&p,  Quaternion *q);
+
+	USART_printf(&huart3, "Euler:\r\n");
+	USART_printf(&huart3, "\tx: %f:\r\n", Euler_x);
+	USART_printf(&huart3, "\ty: %f:\r\n", Euler_y);
+	USART_printf(&huart3, "\tz: %f:\r\n", Euler_z);
 }
 
+*/
 /* USER CODE END 0 */
 
 /**
@@ -116,7 +131,7 @@ void avgMPU6050_2000()
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	MPU_ConfigTypeDef myMpuConfig;
+//	MPU_ConfigTypeDef myMpuConfig;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -141,6 +156,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
+   DEF_UART = &huart3;
    nrf24_DebugUART_Init(huart3);
    NRF24_begin(GPIOB, CSNpin_Pin, GPIO_PIN_9, hspi1);
    NRF24_powerUp();
@@ -164,6 +180,7 @@ int main(void)
   //  nRF24_DumpConfig();
 
     //1. Initialise the MPU6050 module and I2C
+   /*
     	MPU6050_Init(&hi2c2);
     	//2. Configure Accel and Gyro parameters
     	myMpuConfig.Accel_Full_Scale = AFS_SEL_4g;
@@ -174,6 +191,10 @@ int main(void)
     	MPU6050_Config(&myMpuConfig);
 
     	//avgMPU6050_2000();
+    	 * */
+   mpu6050_i2c = &hi2c2;
+   MPU6050_Init();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -203,6 +224,39 @@ int main(void)
 	  			//sprintf(myDataack, "AckPayload:  %s \r\n", AckPayload);
 	  		//	HAL_UART_Transmit(&huart3, (uint8_t *)myDataack, strlen(myDataack), 10);
 	  		}
+		struct Euler p;
+		struct Quaternion q;
+		struct Gravity g;
+
+		USART_printf(&huart3, "Connected: %u\r\n", MPU6050_isConnected());
+		uint16_t data[3];
+
+		mpu_get_gyro_reg (data, NULL);
+		USART_printf(&huart3, "test:\r\n");
+		USART_printf(&huart3, "\tx: %u:\r\n", data[0]);
+		USART_printf(&huart3, "\ty: %u:\r\n", data[1]);
+		USART_printf(&huart3, "\tz: %u:\r\n", data[2]);
+		mpu_get_accel_reg(data, NULL);
+		USART_printf(&huart3, "test2:\r\n");
+		USART_printf(&huart3, "\tx: %u:\r\n", data[0]);
+		USART_printf(&huart3, "\ty: %u:\r\n", data[1]);
+		USART_printf(&huart3, "\tz: %u:\r\n", data[2]);
+
+		MPU6050_GetQuaternion(&q);
+		USART_printf(&huart3, "Quaternion:\r\n");
+		USART_printf(&huart3, "\tx: %f:\r\n", q.x);
+		USART_printf(&huart3, "\ty: %f:\r\n", q.y);
+		USART_printf(&huart3, "\tz: %f:\r\n", q.z);
+		MPU6050_ToGravity(&g, &q);
+		MPU6050_ToYPR(&p, &q, &g);
+		MPU6050_ToEuler(&p,  &q);
+
+		USART_printf(&huart3, "Euler:\r\n");
+		USART_printf(&huart3, "\tx: %f:\r\n", p.x);
+		USART_printf(&huart3, "\ty: %f:\r\n", p.y);
+		USART_printf(&huart3, "\tz: %f:\r\n", p.z);
+
+
 
 		HAL_Delay(1000);
 		//avgMPU6050_2000();

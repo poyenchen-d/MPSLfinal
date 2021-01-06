@@ -19,6 +19,7 @@ References:
 
 //Header files
 #include "TJ_MPU6050.h"
+#include <math.h>
 //Library Variable
 //1- I2C Handle 
 static I2C_HandleTypeDef i2cHandler;
@@ -255,4 +256,14 @@ void _Accel_Cali(float x_min, float x_max, float y_min, float y_max, float z_min
 	
 	//3* Z-Axis calibrate
 	A_Z_Bias		= (z_max + z_min)/2.0f;
+}
+//15 get ola ola
+void MPU6050_GetEuler(struct Euler *p, float x, float y, float z, float w)
+{
+	//1* X-Axis calibrate
+	p->Euler_x	= atan(2*((w*x)+(y*z)) /(1-2*(x*x+y*y)));
+	//2* Y-Axis calibrate
+	p->Euler_y	= asin(2*((w*y)-(x*z)));
+	//3* Z-Axis calibrate
+	p->Euler_z	= atan(2*((w*z)+(x*y)) /(1-2*(z*z+y*y)));
 }

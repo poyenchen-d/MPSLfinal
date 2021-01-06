@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 
+UART_HandleTypeDef *DEF_UART = NULL;
+
 void USART_printf(UART_HandleTypeDef *usart, const char *fmt, ...)
 {
 	va_list ap;

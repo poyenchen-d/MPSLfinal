@@ -126,6 +126,11 @@ typedef struct
 	float z;
 }ScaledData_Def;
 
+struct Euler {
+	float Euler_x;
+	float Euler_y;
+	float Euler_z;
+};
 
 //Function Prototype
 //1- i2c Handler 
@@ -156,4 +161,5 @@ void MPU6050_Get_Gyro_RawData(RawData_Def *rawDef);
 void MPU6050_Get_Gyro_Scale(ScaledData_Def *scaledDef);
 //14- Accel Calibration
 void _Accel_Cali(float x_min, float x_max, float y_min, float y_max, float z_min, float z_max);
-
+//15- euler
+void MPU6050_GetEuler(struct Euler *p, float x, float y, float z, float w);

@@ -19,12 +19,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32l4xx_hal.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
 
 #include "i2c.h"
+#include "keypad.h"
 #include "uart.h"
 #include "nrf24.h"
 
@@ -178,6 +179,7 @@ int main(void)
 	//  nRF24_DumpConfig();
 
     mpu6050_i2c = &hi2c2;
+    USART_printf(&huart3, "Connected: %u\r\n", MPU6050_isConnected());
     if (MPU6050_Init()) {
     	USART_printf(&huart3, "Failed to initialize MPU6050.\r\n");
     }
@@ -188,7 +190,8 @@ int main(void)
 	q.y = 0;
 	q.z = 0;
 
-	USART_printf(&huart3, "Connected: %u\r\n", MPU6050_isConnected());
+	KeypadState_t kpstate = 0;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -210,13 +213,11 @@ int main(void)
 		struct YPR y;
 
 		int16_t gyro_raw[3], accel_raw[3];
-
 		mpu_get_gyro_reg(gyro_raw, NULL);
 		mpu_get_accel_reg(accel_raw, NULL);
 		uint32_t ts = HAL_GetTick();
 
 		struct ScaledData accel, gyro;
-
 		MPU6050_ToAccelScaled(&accel, accel_raw);
 		MPU6050_ToGyroScaled(&gyro, gyro_raw);
 
@@ -227,8 +228,18 @@ int main(void)
 		MPU6050_ToGravity(&g, &q);
 		MPU6050_ToYPR(&y, &q, &g);
 
+		enum KeypadEvent events[16];
+		kpstate = keypad_scan_diff(events, kpstate);
+		for (int i = 0; i < 16; i++) {
+			if (events[i] == KPEV_Up) {
+				USART_printf(&huart3, "Key %d Up!\r\n", i);
+			} else if (events[i] == KPEV_Down) {
+				USART_printf(&huart3, "Key %d Down!\r\n", i);
+			}
+		}
+
 		uint32_t print_ts = HAL_GetTick();
-		if (print_ts - last_print > 1000) {
+		if (false && print_ts - last_print > 1000) {
 			USART_printf(&huart3, "Gyro raw:\r\n");
 			USART_printf(&huart3, "\tx: %d:\r\n", gyro_raw[0]);
 			USART_printf(&huart3, "\ty: %d:\r\n", gyro_raw[1]);
@@ -443,11 +454,51 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, CSNpin_Pin|CEpin_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, X0_Pin|X1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(Laser_GPIO_Port, Laser_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, X2_Pin|X3_Pin|CSNpin_Pin|CEpin_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : X0_Pin X1_Pin */
+  GPIO_InitStruct.Pin = X0_Pin|X1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : Laser_Pin */
+  GPIO_InitStruct.Pin = Laser_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(Laser_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : Y2_Pin Y1_Pin Y3_Pin */
+  GPIO_InitStruct.Pin = Y2_Pin|Y1_Pin|Y3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : X2_Pin X3_Pin */
+  GPIO_InitStruct.Pin = X2_Pin|X3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : Y0_Pin */
+  GPIO_InitStruct.Pin = Y0_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(Y0_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : CSNpin_Pin CEpin_Pin */
   GPIO_InitStruct.Pin = CSNpin_Pin|CEpin_Pin;

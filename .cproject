@@ -99,8 +99,8 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<fileInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1584328307.549690461" name="TJ_MPU6050.c" rcbsApplicability="disable" resourcePath="Core/Src/TJ_MPU6050.c" toolsToInvoke="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1262821670.1026039980">
-						<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1262821670.1026039980" name="MCU GCC Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1262821670"/>
+					<fileInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1584328307.1740110427" name="TJ_MPU6050.c" rcbsApplicability="disable" resourcePath="Core/Src/TJ_MPU6050.c" toolsToInvoke="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1262821670.1928353919">
+						<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1262821670.1928353919" name="MCU GCC Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1262821670"/>
 					</fileInfo>
 					<fileInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1584328307.1310017008" name="TJ_MPU6050.h" rcbsApplicability="disable" resourcePath="Core/Inc/TJ_MPU6050.h" toolsToInvoke=""/>
 					<sourceEntries>
@@ -232,7 +232,7 @@
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="Debug">
-			<resource resourceType="PROJECT" workspacePath="/MPSL_final"/>
+			<resource resourceType="PROJECT" workspacePath="MPSL_final"/>
 		</configuration>
 		<configuration configurationName="Release"/>
 	</storageModule>

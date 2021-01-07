@@ -6,6 +6,7 @@
  */
 #include <math.h>
 #include <stdint.h>
+
 #include "stm32l4xx_hal.h"
 #include "MPU6050/mpu6050.h"
 #include "MPU6050/inv_mpu.h"
@@ -190,69 +191,46 @@ void MPU6050_ToGyroScaled(struct ScaledData *scaled, const int16_t raw[3])
 
 void MPU6050_ToQuaternion(struct Quaternion *q, const struct ScaledData *accel, const struct ScaledData *gyro, float sec)
 {
-	  float ax= accel->x;
-	  float ay= accel->y;
-	  float az= accel->z;
-	  float gx= gyro->x;
-	  float gy= gyro->y;
-	  float gz= gyro->z;
-	  gx =gx/180*3.14;
-	  gy =gy/180*3.14;
-	  gz =gz/180*3.14;
-	  float q0= q->x;
-	  float q1= q->y;
-	  float q2= q->z;
-	  float q3= q->w;
-	  float halfT = sec / 2.0;
-	  float Kp =2.0;
-	  float Ki =0.2;
-	  float norm;
-	  float vx, vy, vz;
-	  float ex, ey, ez;
+	const static float FACTOR = 0.001;
 
-	  // normalise the measurements
-	  norm = sqrt(ax * ax + ay * ay + az * az);
-	  ax = ax / norm;
-	  ay = ay / norm;
-	  az = az / norm;
+	float w_q = q->w;
+	float x_q = q->x;
+	float y_q = q->y;
+	float z_q = q->z;
+	float halfT = sec / 2.0;
 
-	  // estimated direction of gravity
-	  vx = 2.0 * ((q1 * q3) - (q0 * q2));
-	  vy = 2.0 * (q0 * q1 + q2 * q3);
-	  vz = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
+	// normalise the measurements
+	float norm = sqrt(accel->x * accel->x + accel->y * accel->y + accel->z * accel->z);
+	float ax = accel->x / norm;
+	float ay = accel->y / norm;
+	float az = accel->z / norm;
+
+	// estimated direction of gravity
+	float vx = 2.0 * ((x_q * z_q) - (w_q * y_q));
+	float vy = 2.0 * (w_q * x_q + y_q * z_q);
+	float vz = 1 - 2.0 * (x_q * x_q - y_q * y_q);
 
 	  // error is sum of cross product between reference direction of field and direction measured by sensor
-	  ex = (ay * vz - az * vy);
-	  ey = (az * vx - ax * vz);
-	  ez = (ax * vy - ay * vx);
+	float ex = (ay * vz - az * vy);
+	float ey = (az * vx - ax * vz);
+	float ez = (ax * vy - ay * vx);
 
 	  // integral error scaled integral gain
-	  exInt = exInt + ex * Ki;
-	  eyInt = eyInt + ey * Ki;
-	  ezInt = ezInt + ez * Ki;
+	float delta_x = gyro->x * halfT + ex * FACTOR;
+	float delta_y = gyro->y * halfT + ey * FACTOR;
+	float delta_z = gyro->z * halfT + ez * FACTOR;
 
-	  // adjusted gyroscope measurements
-	  gx = gx + Kp * ex + exInt;
-	  gy = gy + Kp * ey + eyInt;
-	  gz = gz + Kp * ez + ezInt;
+	q->w = w_q         - x_q*delta_x - y_q*delta_y - z_q*delta_z;
+	q->x = w_q*delta_x + x_q         + y_q*delta_z - z_q*delta_y;
+	q->y = w_q*delta_y - x_q*delta_z + y_q         + z_q*delta_x;
+	q->z = w_q*delta_z + x_q*delta_y - y_q*delta_x + z_q;
 
-	  // integrate quaternion rate and normalise
-	  q0 = q0 + (-q1 * gx - q2 * gy - q3 * gz) * halfT;
-	  q1 = q1 + (q0 * gx + q2 * gz - q3 * gy) * halfT;
-	  q2 = q2 + (q0 * gy - q1 * gz + q3 * gx) * halfT;
-	  q3 = q3 + (q0 * gz + q1 * gy - q2 * gx) * halfT;
-
-	  // normalise quaternion
-	  norm = sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
-	  q0 = q0 / norm;
-	  q1 = q1 / norm;
-	  q2 = q2 / norm;
-	  q3 = q3 / norm;
-
-	  q->x = q0;
-	  q->y = q1;
-	  q->z = q2;
-	  q->w = q3;
+	// normalise quaternion
+	norm = sqrt(w_q * w_q + x_q * x_q + y_q * y_q + z_q * z_q);
+	q->x = x_q / norm;
+	q->y = y_q / norm;
+	q->z = z_q / norm;
+	q->w = w_q / norm;
 }
 
 void MPU6050_ToEuler(struct Euler *p, const struct Quaternion *q)

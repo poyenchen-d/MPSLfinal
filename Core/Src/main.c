@@ -29,6 +29,7 @@
 #include "uart.h"
 #include "nrf24.h"
 
+#include "app.h"
 #include "MY_NRF24.h"
 #include "MPU6050/inv_mpu.h"
 #include "MPU6050/mpu6050.h"
@@ -190,6 +191,7 @@ int main(void)
 	q.y = 0;
 	q.z = 0;
 
+	keypad_init();
 	KeypadState_t kpstate = 0;
 
   /* USER CODE END 2 */
@@ -225,6 +227,7 @@ int main(void)
 
 		enum KeypadEvent events[16];
 		kpstate = keypad_scan_diff(events, kpstate);
+		process_key(kpstate, events, &y);
 
 
 		uint32_t print_ts = HAL_GetTick();

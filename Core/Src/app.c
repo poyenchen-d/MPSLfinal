@@ -27,7 +27,7 @@ int process_key(KeypadState_t cur_state, const enum KeypadEvent events[16], cons
 {
 	short mouse_x = 0, mouse_y = 0, mouse_wheel = 0;
 	char cmdbuf[32 + 1];
-	uint32_t cur_action_ts = HAL_Get_Tick();
+	uint32_t cur_action_ts = HAL_GetTick();
 	// KeyDown/Up action
 	for (int i = 0; i < 16; i++) {
 		if (events[i] == KPEV_Up) {
@@ -38,11 +38,11 @@ int process_key(KeypadState_t cur_state, const enum KeypadEvent events[16], cons
 				break;
 			case 0:
 				// Mouse MBtn
-				send_command("mu 2");
+				send_command("mu 4");
 				break;
 			case 14:
 				// Mouse RBtn
-				send_command("mu 4");
+				send_command("mu 2");
 				break;
 			case 13:
 				// Laser
@@ -58,12 +58,12 @@ int process_key(KeypadState_t cur_state, const enum KeypadEvent events[16], cons
 			switch (i) {
 			case 1:
 				// Wheel Up
-				mouse_wheel -= 1;
+				mouse_wheel += 1;
 				last_action_ts = cur_action_ts;
 				break;
 			case 7:
 				// Wheel Down
-				mouse_wheel += 1;
+				mouse_wheel -= 1;
 				last_action_ts = cur_action_ts;
 				break;
 			case 2:
@@ -96,11 +96,11 @@ int process_key(KeypadState_t cur_state, const enum KeypadEvent events[16], cons
 				break;
 			case 0:
 				// Mouse MBtn
-				send_command("md 2");
+				send_command("md 4");
 				break;
 			case 14:
 				// Mouse RBtn
-				send_command("md 4");
+				send_command("md 2");
 				break;
 			case 13:
 				// Laser
@@ -116,18 +116,18 @@ int process_key(KeypadState_t cur_state, const enum KeypadEvent events[16], cons
 	}
 
 	// KeyPressed action
-	if ((cur_action_ts - last_action_ts) > 500) {
+	if ((cur_action_ts - last_action_ts) > 100) {
 		for (int i = 0; i < 16; i++) {
 			uint16_t mask = (1U << i);
 			if (cur_state & mask) {
 				switch (i) {
 				case 1:
 					// Wheel Up
-					mouse_wheel -= 1;
+					mouse_wheel += 1;
 					break;
 				case 7:
 					// Wheel Down
-					mouse_wheel += 1;
+					mouse_wheel -= 1;
 					break;
 				case 2:
 					// Mouse Up

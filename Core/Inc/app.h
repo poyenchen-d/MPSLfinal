@@ -12,4 +12,6 @@
 #include "stm32l4xx_hal.h"
 #include "MPU6050/mpu6050.h"
 
+int process_key(KeypadState_t cur_state, const enum KeypadEvent events[16], const struct YPR *y);
+
 #endif /* INC_APP_H_ */

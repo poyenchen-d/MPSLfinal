@@ -58,6 +58,9 @@ KeypadState_t keypad_scan_multi()
         // Set Xi output as Hi-Z
     	HAL_GPIO_WritePin(KEYPAD_ROW_PORT[i], KEYPAD_ROW_PIN[i], GPIO_PIN_RESET);
 
+    	int delay = 10;
+    	while (delay--);
+
         for (int j = 0; j < 4; j++) {
             if (HAL_GPIO_ReadPin(KEYPAD_COL_PORT[j], KEYPAD_COL_PIN[j]) == GPIO_PIN_RESET) {
                 ret |= (1U << KEYPAD_CODE[i][j]);

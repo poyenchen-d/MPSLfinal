@@ -188,11 +188,16 @@ int main(void)
     	USART_printf(&huart3, "Failed to initialize MPU6050.\r\n");
     }
 
-    struct Quaternion q;
-	q.w = 1;
-	q.x = 0;
-	q.y = 0;
-	q.z = 0;
+    struct Quaternion q = {
+		.w = 1,
+		.x = 0,
+		.y = 0,
+		.z = 0,
+    };
+	struct Euler p;
+	struct Gravity g;
+	struct YPR y;
+	struct YPR kalman_ypr;
 
 	keypad_init();
 	KeypadState_t kpstate = 0;
@@ -207,72 +212,72 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 	uint32_t gyro_ts = HAL_GetTick();
 	uint32_t last_print = gyro_ts;
+	uint32_t iter_cnt = 0;
 
 	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		struct Euler p;
-		struct Gravity g;
-		struct YPR y;
+		iter_cnt++;
 
 		int16_t gyro_raw[3], accel_raw[3];
 		mpu_get_gyro_reg(gyro_raw, NULL);
 		mpu_get_accel_reg(accel_raw, NULL);
 		uint32_t ts = HAL_GetTick();
-
+		/*
 		struct ScaledData accel, gyro;
 		MPU6050_ToAccelScaled(&accel, accel_raw);
 		MPU6050_ToGyroScaled(&gyro, gyro_raw);
+		*/
+		//MPU6050_ToQuaternion(&q, &accel, &gyro, (ts - gyro_ts) / 1000.0);
+		if (MPU6050_GetQuaternion(&q) == 0) {
+			MPU6050_ToEuler(&p,  &q);
+			MPU6050_ToGravity(&g, &q);
+			MPU6050_ToYPR(&y, &q, &g);
 
-		MPU6050_ToQuaternion(&q, &accel, &gyro, (ts - gyro_ts) / 1000.0);
+			// Kalman filter
+			float kalman_x = Kalman_getAngle(&kalmanX, y.roll * RAD_TO_DEG, gyro_raw[0] / gyroRateFactor, (ts - gyro_ts) / 1000.0);
+			float kalman_z = Kalman_getAngle(&kalmanZ, y.yaw * RAD_TO_DEG, gyro_raw[2] / gyroRateFactor, (ts - gyro_ts) / 1000.0);
+			gyro_ts = ts;
 
-		MPU6050_ToEuler(&p,  &q);
-		MPU6050_ToGravity(&g, &q);
-		MPU6050_ToYPR(&y, &q, &g);
-
-		// Kalman filter
-		float kalman_x = Kalman_getAngle(&kalmanX, y.roll * RAD_TO_DEG, gyro_raw[0] / gyroRateFactor, (ts - gyro_ts) / 1000.0);
-		float kalman_z = Kalman_getAngle(&kalmanZ, y.yaw * RAD_TO_DEG, gyro_raw[2] / gyroRateFactor, (ts - gyro_ts) / 1000.0);
-		gyro_ts = ts;
-
-		struct YPR kalman_ypr;
-		kalman_ypr.yaw = kalman_z * DEG_TO_RAD;
-		kalman_ypr.pitch = y.pitch;
-		kalman_ypr.roll = kalman_x * DEG_TO_RAD;
+			kalman_ypr.yaw = kalman_z * DEG_TO_RAD;
+			kalman_ypr.pitch = y.pitch;
+			kalman_ypr.roll = kalman_x * DEG_TO_RAD;
+		}
 
 		enum KeypadEvent events[16];
 		kpstate = keypad_scan_diff(events, kpstate);
 		process_key(kpstate, events, &kalman_ypr);
 
-
 		uint32_t print_ts = HAL_GetTick();
 		if (print_ts - last_print > 1000) {
 			USART_printf(&huart3, "Gyro raw:\r\n");
-			USART_printf(&huart3, "\tx: %d:\r\n", gyro_raw[0]);
-			USART_printf(&huart3, "\ty: %d:\r\n", gyro_raw[1]);
-			USART_printf(&huart3, "\tz: %d:\r\n", gyro_raw[2]);
+			USART_printf(&huart3, "\tx: %d\r\n", gyro_raw[0]);
+			USART_printf(&huart3, "\ty: %d\r\n", gyro_raw[1]);
+			USART_printf(&huart3, "\tz: %d\r\n", gyro_raw[2]);
 			USART_printf(&huart3, "Accel raw:\r\n");
-			USART_printf(&huart3, "\tx: %d:\r\n", accel_raw[0]);
-			USART_printf(&huart3, "\ty: %d:\r\n", accel_raw[1]);
-			USART_printf(&huart3, "\tz: %d:\r\n", accel_raw[2]);
+			USART_printf(&huart3, "\tx: %d\r\n", accel_raw[0]);
+			USART_printf(&huart3, "\ty: %d\r\n", accel_raw[1]);
+			USART_printf(&huart3, "\tz: %d\r\n", accel_raw[2]);
 			USART_printf(&huart3, "Quaternion:\r\n");
-			USART_printf(&huart3, "\tw: %f:\r\n", q.w);
-			USART_printf(&huart3, "\tx: %f:\r\n", q.x);
-			USART_printf(&huart3, "\ty: %f:\r\n", q.y);
-			USART_printf(&huart3, "\tz: %f:\r\n", q.z);
+			USART_printf(&huart3, "\tw: %f\r\n", q.w);
+			USART_printf(&huart3, "\tx: %f\r\n", q.x);
+			USART_printf(&huart3, "\ty: %f\r\n", q.y);
+			USART_printf(&huart3, "\tz: %f\r\n", q.z);
 			USART_printf(&huart3, "Euler:\r\n");
-			USART_printf(&huart3, "\tx: %f:\r\n", p.x);
-			USART_printf(&huart3, "\ty: %f:\r\n", p.y);
-			USART_printf(&huart3, "\tz: %f:\r\n", p.z);
+			USART_printf(&huart3, "\tx: %f\r\n", p.x);
+			USART_printf(&huart3, "\ty: %f\r\n", p.y);
+			USART_printf(&huart3, "\tz: %f\r\n", p.z);
 			USART_printf(&huart3, "YPR:\r\n");
-			USART_printf(&huart3, "\tyaw: %f:\r\n", y.yaw);
-			USART_printf(&huart3, "\tpitch: %f:\r\n", y.pitch);
-			USART_printf(&huart3, "\troll: %f:\r\n", y.roll);
-			USART_printf(&huart3, "Kalman YPR:\r\n");
-			USART_printf(&huart3, "\tyaw: %f:\r\n", kalman_ypr.yaw);
-			USART_printf(&huart3, "\tpitch: %f:\r\n", kalman_ypr.pitch);
-			USART_printf(&huart3, "\troll: %f:\r\n", kalman_ypr.roll);
+			USART_printf(&huart3, "\tyaw: %f\r\n", y.yaw * RAD_TO_DEG);
+			USART_printf(&huart3, "\tpitch: %f\r\n", y.pitch * RAD_TO_DEG);
+			USART_printf(&huart3, "\troll: %f\r\n", y.roll * RAD_TO_DEG);
+			USART_printf(&huart3, "Kalman YPR\r\n");
+			USART_printf(&huart3, "\tyaw: %f\r\n", kalman_ypr.yaw * RAD_TO_DEG);
+			USART_printf(&huart3, "\tpitch: %f\r\n", kalman_ypr.pitch * RAD_TO_DEG);
+			USART_printf(&huart3, "\troll: %f\r\n", kalman_ypr.roll * RAD_TO_DEG);
+			USART_printf(&huart3, "Iterator count: %u\r\n", iter_cnt);
+			iter_cnt = 0;
 
 			last_print = print_ts;
 		}

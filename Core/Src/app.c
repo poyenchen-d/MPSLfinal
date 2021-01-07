@@ -45,19 +45,19 @@ void configure_angle(const struct YPR *y)
 		cfg_state = CFG_1;
 		break;
 	case CFG_1:
-		tan_x0 = tan(y->roll - normal_vec[1]);
-		tan_y0 = tan(y->yaw - normal_vec[0]);
+		tan_x0 = tan(y->yaw - normal_vec[0]);
+		tan_y0 = tan(y->roll - normal_vec[1]);
 		cfg_state = CFG_2;
 		USART_printf(DEF_UART, "tan_x0: %f\r\n", tan_x0);
 		USART_printf(DEF_UART, "tan_y0: %f\r\n", tan_y0);
 		break;
 	case CFG_2:
-		tan_x1 = tan(y->roll - normal_vec[1]);
+		tan_x1 = tan(y->yaw - normal_vec[0]);
 		USART_printf(DEF_UART, "tan_x1: %f\r\n", tan_x1);
 		cfg_state = CFG_3;
 		break;
 	case CFG_3:
-		tan_y1 = tan(y->yaw - normal_vec[0]);
+		tan_y1 = tan(y->roll - normal_vec[1]);
 		USART_printf(DEF_UART, "tan_y1: %f\r\n", tan_y1);
 		cfg_state = CFG_DONE;
 		break;
@@ -77,7 +77,7 @@ void calc_cursor_pos(uint16_t pos[2], const struct YPR *y)
 
 	pos[0] = (uint16_t)(x_p * UINT16_MAX);
 	pos[1] = (uint16_t)(y_p * UINT16_MAX);
-	USART_printf(DEF_UART, "Cursor: (%u, %u)\r\n", pos[0], pos[1]);
+	USART_printf(DEF_UART, "Cursor: (%f, %f) -> (%u, %u)\r\n", x_p, y_p, pos[0], pos[1]);
 }
 
 int process_key(KeypadState_t cur_state, const enum KeypadEvent events[16], const struct YPR *y)

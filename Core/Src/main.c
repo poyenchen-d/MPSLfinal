@@ -203,11 +203,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		/*
-		if(NRF24_write(myTxData, 32)) {
-			HAL_UART_Transmit(&huart3, (uint8_t *)"Transmitted Successfully\r\n", strlen("Transmitted Successfully\r\n"), 10);
-		}
-	  	*/
 		struct Euler p;
 		struct Gravity g;
 		struct YPR y;
@@ -230,13 +225,7 @@ int main(void)
 
 		enum KeypadEvent events[16];
 		kpstate = keypad_scan_diff(events, kpstate);
-		for (int i = 0; i < 16; i++) {
-			if (events[i] == KPEV_Up) {
-				USART_printf(&huart3, "Key %d Up!\r\n", i);
-			} else if (events[i] == KPEV_Down) {
-				USART_printf(&huart3, "Key %d Down!\r\n", i);
-			}
-		}
+
 
 		uint32_t print_ts = HAL_GetTick();
 		if (false && print_ts - last_print > 1000) {

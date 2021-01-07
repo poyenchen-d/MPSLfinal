@@ -99,10 +99,6 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<fileInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1584328307.1740110427" name="TJ_MPU6050.c" rcbsApplicability="disable" resourcePath="Core/Src/TJ_MPU6050.c" toolsToInvoke="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1262821670.1928353919">
-						<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1262821670.1928353919" name="MCU GCC Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1262821670"/>
-					</fileInfo>
-					<fileInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1584328307.1310017008" name="TJ_MPU6050.h" rcbsApplicability="disable" resourcePath="Core/Inc/TJ_MPU6050.h" toolsToInvoke=""/>
 					<sourceEntries>
 						<entry excluding="Inc/TJ_MPU6050.h|Src/TJ_MPU6050.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>

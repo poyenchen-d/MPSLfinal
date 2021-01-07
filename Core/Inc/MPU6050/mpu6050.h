@@ -141,6 +141,8 @@
 #define MPU6050_CLOCK_PLL_EXT19M        0x05
 #define MPU6050_CLOCK_KEEP_RESET        0x07
 
+extern float accelScalingFactor, gyroScalingFactor, gyroRateFactor;
+
 #define DEFAULT_MPU_HZ  (200)
 #define q30  1073741824.0f
 

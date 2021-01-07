@@ -12,7 +12,7 @@
 #include "MPU6050/inv_mpu.h"
 #include "MPU6050/inv_mpu_dmp_motion_driver.h"
 
-static float accelScalingFactor, gyroScalingFactor;
+float accelScalingFactor, gyroScalingFactor, gyroRateFactor;
 static signed char gyro_orientation[9] = { -1, 0, 0, 0, -1, 0, 0, 0, 1 };
 float exInt=0;
 float eyInt=0;
@@ -106,6 +106,7 @@ int MPU6050_Init()
     	return -1;
     }
     gyroScalingFactor = (250.0f/32768.0f);
+    gyroRateFactor = 131.0;
     if (mpu_set_accel_fsr(8)) {
     	return -1;
     }
@@ -226,11 +227,11 @@ void MPU6050_ToQuaternion(struct Quaternion *q, const struct ScaledData *accel, 
 	q->z = w_q*delta_z + x_q*delta_y - y_q*delta_x + z_q;
 
 	// normalise quaternion
-	norm = sqrt(w_q * w_q + x_q * x_q + y_q * y_q + z_q * z_q);
-	q->x = x_q / norm;
-	q->y = y_q / norm;
-	q->z = z_q / norm;
-	q->w = w_q / norm;
+	norm = sqrt(q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z);
+	q->w = q->w / norm;
+	q->x = q->x / norm;
+	q->y = q->y / norm;
+	q->z = q->z / norm;
 }
 
 void MPU6050_ToEuler(struct Euler *p, const struct Quaternion *q)

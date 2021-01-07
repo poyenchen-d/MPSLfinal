@@ -28,11 +28,12 @@
 #include "keypad.h"
 #include "uart.h"
 #include "nrf24.h"
-
-#include "app.h"
 #include "MY_NRF24.h"
+#include "kalman.h"
 #include "MPU6050/inv_mpu.h"
 #include "MPU6050/mpu6050.h"
+
+#include "app.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,6 +43,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define RAD_TO_DEG (57.295779513082320876798154814105)
+#define DEG_TO_RAD (0.01745329251994329576923690768489)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -194,6 +197,10 @@ int main(void)
 	keypad_init();
 	KeypadState_t kpstate = 0;
 
+	struct Kalman kalmanX, kalmanZ;
+	Kalman_Init(&kalmanX);
+	Kalman_Init(&kalmanZ);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -219,19 +226,28 @@ int main(void)
 		MPU6050_ToGyroScaled(&gyro, gyro_raw);
 
 		MPU6050_ToQuaternion(&q, &accel, &gyro, (ts - gyro_ts) / 1000.0);
-		gyro_ts = ts;
 
 		MPU6050_ToEuler(&p,  &q);
 		MPU6050_ToGravity(&g, &q);
 		MPU6050_ToYPR(&y, &q, &g);
 
+		// Kalman filter
+		float kalman_x = Kalman_getAngle(&kalmanX, y.roll * RAD_TO_DEG, gyro_raw[0] / gyroRateFactor, (ts - gyro_ts) / 1000.0);
+		float kalman_z = Kalman_getAngle(&kalmanZ, y.yaw * RAD_TO_DEG, gyro_raw[2] / gyroRateFactor, (ts - gyro_ts) / 1000.0);
+		gyro_ts = ts;
+
+		struct YPR kalman_ypr;
+		kalman_ypr.yaw = kalman_z * DEG_TO_RAD;
+		kalman_ypr.pitch = y.pitch;
+		kalman_ypr.roll = kalman_x * DEG_TO_RAD;
+
 		enum KeypadEvent events[16];
 		kpstate = keypad_scan_diff(events, kpstate);
-		process_key(kpstate, events, &y);
+		process_key(kpstate, events, &kalman_ypr);
 
 
 		uint32_t print_ts = HAL_GetTick();
-		if (false && print_ts - last_print > 1000) {
+		if (print_ts - last_print > 1000) {
 			USART_printf(&huart3, "Gyro raw:\r\n");
 			USART_printf(&huart3, "\tx: %d:\r\n", gyro_raw[0]);
 			USART_printf(&huart3, "\ty: %d:\r\n", gyro_raw[1]);
@@ -253,6 +269,10 @@ int main(void)
 			USART_printf(&huart3, "\tyaw: %f:\r\n", y.yaw);
 			USART_printf(&huart3, "\tpitch: %f:\r\n", y.pitch);
 			USART_printf(&huart3, "\troll: %f:\r\n", y.roll);
+			USART_printf(&huart3, "Kalman YPR:\r\n");
+			USART_printf(&huart3, "\tyaw: %f:\r\n", kalman_ypr.yaw);
+			USART_printf(&huart3, "\tpitch: %f:\r\n", kalman_ypr.pitch);
+			USART_printf(&huart3, "\troll: %f:\r\n", kalman_ypr.roll);
 
 			last_print = print_ts;
 		}

@@ -210,7 +210,6 @@ void MPU6050_ToQuaternion(struct Quaternion *q, const struct ScaledData *accel, 
 	  float vx, vy, vz;
 	  float ex, ey, ez;
 
-
 	  // normalise the measurements
 	  norm = sqrt(ax * ax + ay * ay + az * az);
 	  ax = ax / norm;

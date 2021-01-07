@@ -29,6 +29,7 @@
 #include "nrf24.h"
 
 #include "MY_NRF24.h"
+#include "MPU6050/inv_mpu.h"
 #include "MPU6050/mpu6050.h"
 /* USER CODE END Includes */
 
@@ -156,105 +157,69 @@ int main(void)
   MX_USART3_UART_Init();
   MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
-   DEF_UART = &huart3;
-   nrf24_DebugUART_Init(huart3);
-   NRF24_begin(GPIOB, CSNpin_Pin, GPIO_PIN_9, hspi1);
-   NRF24_powerUp();
+	DEF_UART = &huart3;
+	nrf24_DebugUART_Init(huart3);
+	NRF24_begin(GPIOB, CSNpin_Pin, GPIO_PIN_9, hspi1);
+	NRF24_powerUp();
 
-   // printRadioSettings();
+	NRF24_stopListening();
+	NRF24_openWritingPipe(TxpipeAddrs);
+	NRF24_setAutoAck(true);
+	NRF24_setChannel(82);
+	NRF24_setPayloadSize(32);
+	NRF24_setPALevel(RF24_PA_0dB);
+	NRF24_setDataRate(RF24_2MBPS);
+	NRF24_setRetries(0x3, 3);
+	NRF24_setCRCLength(RF24_CRC_8);
 
-   //**** TRANSMIT - ACK ****//
-   NRF24_stopListening();
-   NRF24_openWritingPipe(TxpipeAddrs);
-   NRF24_setAutoAck(true);
-   NRF24_setChannel(82);
-   NRF24_setPayloadSize(32);
-   NRF24_setPALevel(RF24_PA_0dB);
-   NRF24_setDataRate(RF24_2MBPS);
-   NRF24_setRetries(0x3, 3);
-   NRF24_setCRCLength(RF24_CRC_8);
+	NRF24_enableDynamicPayloads();
+	// NRF24_enableAckPayload();
+	printRadioSettings();
+	//  nRF24_DumpConfig();
 
-   NRF24_enableDynamicPayloads();
-  // NRF24_enableAckPayload();
-   printRadioSettings();
-  //  nRF24_DumpConfig();
+    mpu6050_i2c = &hi2c2;
+    if (MPU6050_Init()) {
+    	USART_printf(&huart3, "Failed to initialize MPU6050.\r\n");
+    }
 
-    //1. Initialise the MPU6050 module and I2C
-   /*
-    	MPU6050_Init(&hi2c2);
-    	//2. Configure Accel and Gyro parameters
-    	myMpuConfig.Accel_Full_Scale = AFS_SEL_4g;
-    	myMpuConfig.ClockSource = Internal_8MHz;
-    	myMpuConfig.CONFIG_DLPF = DLPF_184A_188G_Hz;
-    	myMpuConfig.Gyro_Full_Scale = FS_SEL_500;
-    	myMpuConfig.Sleep_Mode_Bit = 0;  //1: sleep mode, 0: normal mode
-    	MPU6050_Config(&myMpuConfig);
+    struct Quaternion q;
+	q.w = 1;
+	q.x = 0;
+	q.y = 0;
+	q.z = 0;
 
-    	//avgMPU6050_2000();
-    	 * */
-   mpu6050_i2c = &hi2c2;
-   if (MPU6050_Init()) {
-	   USART_printf(&huart3, "Failed to initialize MPU6050.\r\n");
-   }
-
-   uint32_t gyro_ts = HAL_GetTick();
-   uint32_t last_print = gyro_ts;
-   struct Quaternion q;
-   q.w = 1;
-   q.x = 0;
-   q.y = 0;
-   q.z = 0;
-
-   USART_printf(&huart3, "Connected: %u\r\n", MPU6050_isConnected());
+	USART_printf(&huart3, "Connected: %u\r\n", MPU6050_isConnected());
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	uint32_t gyro_ts = HAL_GetTick();
+	uint32_t last_print = gyro_ts;
+
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  		//Raw data
-	  		//MPU6050_Get_Accel_RawData(&myAccelRaw);
-	  		//mpu6050_avg(&myAccelRaw);
-	  		//MPU6050_Get_Gyro_RawData(&myGyroRaw);
-	  		//mpu6050_avg(&myGyroRaw);
-
-	  		//Scaled data
-	  		//MPU6050_Get_Accel_Scale(&myAccelScaled);
-	  		//MPU6050_Get_Gyro_Scale(&myGyroScaled);
-	  		//mpu6050_avg(&myGyroRaw);
-/*
-	  if(NRF24_write(myTxData, 32))
-	  		{
-	  			//NRF24_read(AckPayload, 32);
-	  			HAL_UART_Transmit(&huart3, (uint8_t *)"Transmitted Successfully\r\n", strlen("Transmitted Successfully\r\n"), 10);
-
-	  		//	char myDataack[80];
-	  			//sprintf(myDataack, "AckPayload:  %s \r\n", AckPayload);
-	  		//	HAL_UART_Transmit(&huart3, (uint8_t *)myDataack, strlen(myDataack), 10);
-	  		}
-	  		*/
+		/*
+		if(NRF24_write(myTxData, 32)) {
+			HAL_UART_Transmit(&huart3, (uint8_t *)"Transmitted Successfully\r\n", strlen("Transmitted Successfully\r\n"), 10);
+		}
+	  	*/
 		struct Euler p;
-
 		struct Gravity g;
 		struct YPR y;
 
-
-
-
 		int16_t gyro_raw[3], accel_raw[3];
 
-		mpu_get_gyro_reg (gyro_raw, NULL);
+		mpu_get_gyro_reg(gyro_raw, NULL);
 		mpu_get_accel_reg(accel_raw, NULL);
+		uint32_t ts = HAL_GetTick();
 
 		struct ScaledData accel, gyro;
 
 		MPU6050_ToAccelScaled(&accel, accel_raw);
 		MPU6050_ToGyroScaled(&gyro, gyro_raw);
 
-		uint32_t ts = HAL_GetTick();
 		MPU6050_ToQuaternion(&q, &accel, &gyro, (ts - gyro_ts) / 1000.0);
 		gyro_ts = ts;
 
@@ -264,11 +229,11 @@ int main(void)
 
 		uint32_t print_ts = HAL_GetTick();
 		if (print_ts - last_print > 1000) {
-			USART_printf(&huart3, "test:\r\n");
+			USART_printf(&huart3, "Gyro raw:\r\n");
 			USART_printf(&huart3, "\tx: %d:\r\n", gyro_raw[0]);
 			USART_printf(&huart3, "\ty: %d:\r\n", gyro_raw[1]);
 			USART_printf(&huart3, "\tz: %d:\r\n", gyro_raw[2]);
-			USART_printf(&huart3, "test2:\r\n");
+			USART_printf(&huart3, "Accel raw:\r\n");
 			USART_printf(&huart3, "\tx: %d:\r\n", accel_raw[0]);
 			USART_printf(&huart3, "\ty: %d:\r\n", accel_raw[1]);
 			USART_printf(&huart3, "\tz: %d:\r\n", accel_raw[2]);
@@ -288,9 +253,7 @@ int main(void)
 
 			last_print = print_ts;
 		}
-
-		//avgMPU6050_2000();
-  }
+    }
   /* USER CODE END 3 */
 }
 

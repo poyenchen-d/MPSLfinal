@@ -175,6 +175,8 @@ struct YPR {
 	float roll;
 };
 
+uint8_t MPU6050_isConnected(void);
+
 int MPU6050_Init();
 
 int MPU6050_GetQuaternion(struct Quaternion *q);
